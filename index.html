@@ -1,0 +1,1087 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- このページは外部と一切通信しない（読み込み後のネット通信を禁止） -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#F2F4F8">
+<title>イヤホン管理</title>
+<style>
+:root {
+  --bg: #F2F4F8; --card: #FFFFFF; --surface2: #E9EDF4; --divider: #E3E7EE;
+  --text: #161A21; --sub: #5E6673; --accent: #2F6BEA; --on-accent: #FFFFFF; --accent-soft: #E3ECFE;
+  --good: #1E9E5A; --warn: #E08A00; --danger: #D93A3A; --danger-soft: #FCE8E8;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #101216; --card: #1B1E24; --surface2: #262A32; --divider: #2C3038;
+    --text: #ECEEF2; --sub: #A0A8B4; --accent: #7EA6FF; --on-accent: #0B1530; --accent-soft: #22304F;
+    --good: #4CC985; --warn: #F2B04A; --danger: #FF7B7B; --danger-soft: #3A2224;
+  }
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Segoe UI", "Noto Sans JP", sans-serif; }
+body { padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
+.wrap { max-width: 560px; margin: 0 auto; padding: 12px 16px 40px; }
+h1 { font-size: 22px; margin: 6px 0 2px; }
+.status { display: flex; align-items: center; gap: 6px; color: var(--sub); font-size: 14px; min-height: 22px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--sub); flex: none; }
+.dot.good { background: var(--good); } .dot.warn { background: var(--warn); } .dot.bad { background: var(--danger); }
+.badges { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0 4px; }
+.badge { background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 12px; padding: 4px 10px; border-radius: 12px; }
+.bat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 12px 0; }
+.tile { background: var(--surface2); border-radius: 16px; padding: 10px 12px 12px; min-height: 92px; display: flex; flex-direction: column; }
+.tile .lbl { color: var(--sub); font-size: 13px; display: flex; justify-content: space-between; }
+.tile .lbl span:last-child { color: var(--good); font-size: 12px; }
+.tile .pct { font-size: 24px; font-weight: 800; margin-top: 2px; }
+.tile .pct.small { font-size: 16px; padding-top: 6px; }
+.bar { height: 6px; border-radius: 3px; background: var(--card); margin-top: auto; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; border-radius: 3px; background: var(--good); transition: width .3s; }
+.seg { display: flex; background: var(--surface2); border-radius: 14px; padding: 4px; gap: 4px; }
+.seg button { flex: 1; border: 0; background: transparent; color: var(--sub); font: inherit; font-weight: 700; font-size: 14px;
+  min-height: 40px; border-radius: 11px; padding: 6px 4px; cursor: pointer; }
+.seg button.on { background: var(--accent); color: var(--on-accent); }
+.tabs { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 6px 0; }
+.section { color: var(--sub); font-weight: 700; font-size: 14px; margin: 18px 6px 8px; }
+.card { background: var(--card); border-radius: 20px; padding: 6px 16px; }
+.row { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 0; border-bottom: 1px solid var(--divider); }
+.row:last-child { border-bottom: 0; }
+.row .t { flex: 1; min-width: 0; }
+.row .t b { display: block; font-weight: 400; font-size: 16px; }
+.row .t small { display: block; color: var(--sub); font-size: 13px; margin-top: 2px; }
+.block { padding: 10px 0; border-bottom: 1px solid var(--divider); }
+.block:last-child { border-bottom: 0; }
+.block > b { display: block; font-weight: 400; margin-bottom: 8px; }
+.sw { position: relative; width: 52px; height: 32px; flex: none; }
+.sw input { opacity: 0; width: 0; height: 0; position: absolute; }
+.sw span { position: absolute; inset: 0; background: var(--surface2); border-radius: 16px; transition: .2s; }
+.sw span::after { content: ""; position: absolute; left: 3px; top: 3px; width: 26px; height: 26px; border-radius: 50%;
+  background: var(--card); box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: .2s; }
+.sw input:checked + span { background: var(--accent); }
+.sw input:checked + span::after { left: 23px; background: var(--on-accent); }
+select { appearance: none; -webkit-appearance: none; border: 0; background: transparent; color: var(--accent); font: inherit;
+  font-weight: 700; font-size: 15px; text-align: right; max-width: 190px; padding: 6px 18px 6px 4px; cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, var(--sub) 50%), linear-gradient(135deg, var(--sub) 50%, transparent 50%);
+  background-position: right 6px center, right 1px center; background-size: 5px 5px; background-repeat: no-repeat; }
+select option { color: #000; }
+input[type=range] { width: 100%; accent-color: var(--accent); }
+.btns { display: flex; gap: 8px; padding: 10px 0; }
+.btn { flex: 1; border: 0; border-radius: 23px; min-height: 46px; font: inherit; font-weight: 700; font-size: 15px; cursor: pointer;
+  background: var(--accent-soft); color: var(--accent); padding: 8px 14px; }
+.btn.fill { background: var(--accent); color: var(--on-accent); }
+.btn.plain { background: transparent; }
+.btn.small { flex: none; min-height: 36px; font-size: 14px; padding: 4px 14px; }
+.btn:disabled { opacity: .45; }
+.chips { display: flex; gap: 8px; overflow-x: auto; padding: 8px 0 6px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip { flex: none; border: 0; border-radius: 19px; min-height: 38px; padding: 6px 16px; font: inherit; font-weight: 700; font-size: 14px;
+  background: var(--surface2); color: var(--text); cursor: pointer; white-space: nowrap; }
+.chip.on { background: var(--accent); color: var(--on-accent); }
+.eq { width: 100%; height: 250px; touch-action: none; user-select: none; -webkit-user-select: none; display: block; }
+.note { color: var(--sub); font-size: 13px; line-height: 1.5; padding: 4px 0 10px; }
+.hide { display: none !important; }
+.disabled { opacity: .5; pointer-events: none; }
+.connect { background: var(--card); border-radius: 20px; padding: 18px 16px; margin-top: 12px; }
+.connect ol { margin: 8px 0 4px; padding-left: 20px; line-height: 1.7; }
+.dev { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--divider); margin-right: 8px; }
+.dev.on { background: var(--good); }
+pre { white-space: pre-wrap; word-break: break-all; font-size: 11px; color: var(--sub); max-height: 300px; overflow: auto; margin: 0 0 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 id="title">イヤホン管理</h1>
+  <div class="status"><span class="dot" id="dot"></span><span id="status">未接続</span></div>
+  <div class="badges"><span class="badge">登録不要</span><span class="badge">ネット通信なし</span><span class="badge">端末内に保存</span></div>
+
+  <div class="connect" id="connectBox">
+    <b>イヤホンをつなぐ</b>
+    <ol>
+      <li>イヤホンをケースから出して、iPhone の Bluetooth 設定で音楽が聴ける状態にします</li>
+      <li>下のボタンを押すと、近くの機器の一覧が出ます</li>
+    </ol>
+    <div class="note" id="support"></div>
+    <div class="btns"><button class="btn fill" id="btnPeats">SOUNDPEATS PopClip 2 に接続</button></div>
+    <div class="note">一覧に「BT8912F」と出たら、それが PopClip 2 です。</div>
+    <div class="btns"><button class="btn fill" id="btnP31i">Anker soundcore P31i に接続</button></div>
+    <div class="note">P31i は名前を出さないことがあります。名前が出ないときは「不明なデバイス」などの<b>名前なしで、電波マークがいちばん強いもの</b>を選んでください。違う機器だと「操作用の口がありません」と出るので選び直してください。</div>
+    <pre id="connLog"></pre>
+    <div class="btns"><button class="btn plain hide" id="btnCopy2">接続の記録をコピー</button></div>
+  </div>
+
+  <div id="main" class="hide">
+    <div class="bat">
+      <div class="tile"><div class="lbl"><span>左</span><span id="chgL"></span></div><div class="pct" id="batL">—</div><div class="bar"><i id="barL"></i></div></div>
+      <div class="tile"><div class="lbl"><span>右</span><span id="chgR"></span></div><div class="pct" id="batR">—</div><div class="bar"><i id="barR"></i></div></div>
+      <div class="tile"><div class="lbl"><span>ケース</span><span></span></div><div class="pct" id="batC">—</div><div class="bar"><i id="barC"></i></div></div>
+    </div>
+    <div class="tabs"><div class="seg" id="tabs"><button class="on">サウンド</button><button>操作</button><button>本体</button></div></div>
+
+    <!-- ===== P31i の画面 ===== -->
+    <div id="ankerPages">
+    <div class="page" id="page0">
+      <div class="section">ノイズコントロール</div>
+      <div class="card">
+        <div class="block"><div class="seg" id="ambient"><button>ノイキャン</button><button>外音取り込み</button><button>通常</button></div></div>
+        <div id="ncBox">
+          <div class="block"><b>ノイズキャンセリングの種類</b><div class="seg" id="ncMode"><button>手動</button><button>自動</button><button>シーン別</button></div></div>
+          <div class="block" id="manualBox"><b style="display:flex;justify-content:space-between">強さ<span id="manualVal" style="color:var(--accent);font-weight:700"></span></b>
+            <input type="range" id="manual" min="1" max="5" step="1"></div>
+          <div class="block" id="adaptiveBox"><b>自動調整の強さ</b><div class="seg" id="adaptive"><button>弱</button><button>中</button><button>強</button></div></div>
+          <div class="block" id="sceneBox"><b>シーン</b><div class="seg" id="scene"><button>乗り物</button><button>屋外</button><button>屋内</button></div></div>
+          <label class="row"><div class="t"><b>風切り音の低減</b><small>屋外で風の音を抑えます</small></div><span class="sw"><input type="checkbox" id="wind"><span></span></span></label>
+        </div>
+        <div id="trBox" class="block"><b>外音取り込みの種類</b><div class="seg" id="transparency"><button>すべての音</button><button>人の声を強調</button></div></div>
+      </div>
+
+      <div class="section">イコライザー</div>
+      <div class="card eqCard"></div>
+
+      <div class="section">サウンド効果</div>
+      <div class="card">
+        <label class="row"><div class="t"><b>空間オーディオ</b><small>立体的に広がる音にします</small></div><span class="sw"><input type="checkbox" id="spatial"><span></span></span></label>
+        <div class="block hide" id="spatialBox"><b>空間オーディオのモード</b><div class="seg" id="spatialMode"><button>音楽</button><button>映画</button><button>ゲーム</button></div></div>
+        <label class="row"><div class="t"><b>LDAC（高音質）</b><small>対応するスマホのみ。iPhone は LDAC に対応していません</small></div><span class="sw"><input type="checkbox" id="ldac"><span></span></span></label>
+      </div>
+    </div>
+
+    <div class="page hide" id="page1">
+      <div class="section">タッチ操作の割り当て</div>
+      <div class="card" id="buttons"></div>
+      <div class="btns"><button class="btn" id="btnResetButtons">初期状態に戻す</button></div>
+      <div class="section">タッチの音</div>
+      <div class="card">
+        <label class="row"><div class="t"><b>タッチ音</b><small>タップしたときに音を鳴らします</small></div><span class="sw"><input type="checkbox" id="touchTone"><span></span></span></label>
+      </div>
+    </div>
+
+    <div class="page hide" id="page2">
+      <div class="section">接続</div>
+      <div class="card">
+        <label class="row"><div class="t"><b>2台同時接続</b><small>スマホとパソコンなど 2 台に同時につなぎます</small></div><span class="sw"><input type="checkbox" id="dual"><span></span></span></label>
+      </div>
+      <div class="section">本体</div>
+      <div class="card">
+        <label class="row"><div class="t"><b>電池が少ないときの通知音</b></div><span class="sw"><input type="checkbox" id="lowBattery"><span></span></span></label>
+        <div class="row"><div class="t"><b>自動電源オフ</b><small>使っていないときに電源を切ります</small></div>
+          <select id="autoOff"><option value="0">オフ</option><option value="1">10分</option><option value="2">20分</option><option value="3">30分</option><option value="4">60分</option></select></div>
+        <label class="row"><div class="t"><b>音量の上限</b><small>大きすぎる音から耳を守ります</small></div><span class="sw"><input type="checkbox" id="limit"><span></span></span></label>
+        <div class="row"><div class="t"><b>上限の音量</b></div>
+          <select id="limitDb"><option value="75">75 dB</option><option value="80">80 dB</option><option value="85">85 dB</option><option value="90">90 dB</option><option value="95">95 dB</option><option value="100">100 dB</option></select></div>
+      </div>
+    </div>
+    </div>
+
+    <!-- ===== PopClip 2 の画面（中身は下のプログラムで作る） ===== -->
+    <div id="peatsPages" class="hide">
+      <div class="page" id="pp0"></div>
+      <div class="page hide" id="pp1"></div>
+      <div class="page hide" id="pp2"></div>
+    </div>
+
+    <!-- ===== 共通 ===== -->
+    <div id="commonBottom" class="hide">
+      <div class="section">この機器</div>
+      <div class="card">
+        <div class="note" id="fw" style="padding-top:10px">ファームウェア: —</div>
+        <div class="btns"><button class="btn" id="btnReload">状態を読み直す</button><button class="btn" id="btnDisconnect">切断</button></div>
+      </div>
+      <div class="section">詳細</div>
+      <div class="card">
+        <div class="row" id="logToggle" style="cursor:pointer"><div class="t"><b>通信ログ</b><small>イヤホンとのやり取り（このページの中だけで、どこにも送信しません）</small></div><span id="logLbl" style="color:var(--accent);font-weight:700">表示</span></div>
+        <pre id="log" class="hide"></pre>
+        <div class="btns"><button class="btn plain" id="btnCopy">ログをコピー</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+// =====================================================================
+// 共通の部品
+// =====================================================================
+const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const hex = a => Array.from(a, b => b.toString(16).padStart(2, "0").toUpperCase()).join(" ");
+const logLines = [];
+function log(s) {
+  const t = new Date().toTimeString().slice(0, 8);
+  logLines.push(t + " " + s);
+  if (logLines.length > 400) logLines.splice(0, 100);
+  if (!$("log").classList.contains("hide")) $("log").textContent = logLines.join("\n");
+}
+function setStatus(kind, text) {
+  $("dot").className = "dot " + kind;
+  $("status").textContent = text;
+}
+function el(html) {
+  const t = document.createElement("template");
+  t.innerHTML = html.trim();
+  return t.content.firstChild;
+}
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+class Seg {
+  constructor(elm, onPick) {
+    this.btns = Array.from(elm.querySelectorAll("button"));
+    this.sel = -1;
+    this.btns.forEach((b, i) => b.addEventListener("click", () => {
+      if (i === this.sel) return;
+      this.set(i);
+      if (onPick) onPick(i);
+    }));
+  }
+  set(i) { this.sel = i; this.btns.forEach((b, k) => b.classList.toggle("on", k === i)); }
+}
+
+function showBatteryTile(pctId, barId, chgId, v, charging) {
+  const e = $(pctId);
+  e.textContent = v < 0 ? "未接続" : v + "%";
+  e.classList.toggle("small", v < 0);
+  const bar = $(barId);
+  bar.style.width = (v < 0 ? 0 : v) + "%";
+  bar.style.background = v <= 15 ? "var(--danger)" : v <= 30 ? "var(--warn)" : "var(--good)";
+  if (chgId) $(chgId).textContent = charging ? "充電中" : "";
+}
+
+// ---- ドラッグで調整する EQ（P31i は 8 バンド、PopClip 2 は 10 バンド） ----
+class EqGraph {
+  constructor(card, labels, onChange, onPreset, store, presets) {
+    this.labels = labels;
+    this.values = new Array(labels.length).fill(0);
+    this.active = -1;
+    this.onChange = onChange;
+    this.onPreset = onPreset;
+    this.store = store;
+    this.basePresets = presets;
+    card.innerHTML = '<div class="chips"></div><svg class="eq" viewBox="0 0 400 250" preserveAspectRatio="none"></svg>' +
+      '<div class="btns"><button class="btn">フラットに戻す</button><button class="btn">今の EQ を保存</button></div>' +
+      '<div class="note">つまみを上下にドラッグして調整します。指を離すとすぐイヤホンに反映されます。自分で保存したプリセット（★）は長押しで削除できます。</div>';
+    this.chipsEl = card.querySelector(".chips");
+    this.svg = card.querySelector("svg");
+    const [flat, save] = card.querySelectorAll(".btns .btn");
+    flat.addEventListener("click", () => { this.values = this.values.map(() => 0); this.draw(); this.setChip(-1); this.onChange(this.values, null); });
+    save.addEventListener("click", () => this.save());
+    this.svg.addEventListener("pointerdown", e => {
+      const p = this.point(e);
+      this.active = Math.max(0, Math.min(this.n - 1, Math.floor(p.x / (400 / this.n))));
+      this.svg.setPointerCapture(e.pointerId);
+      this.values[this.active] = this.valAt(p.y);
+      this.draw();
+    });
+    this.svg.addEventListener("pointermove", e => {
+      if (this.active < 0) return;
+      this.values[this.active] = this.valAt(this.point(e).y);
+      this.draw();
+    });
+    this.svg.addEventListener("pointerup", () => {
+      if (this.active < 0) return;
+      this.active = -1; this.draw(); this.setChip(-1); this.onChange(this.values, null);
+    });
+    this.svg.addEventListener("pointercancel", () => { this.active = -1; this.draw(); });
+    matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => this.draw());
+    this.renderChips();
+    this.draw();
+  }
+  get n() { return this.labels.length; }
+  point(e) { const r = this.svg.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width * 400, y: (e.clientY - r.top) / r.height * 250 }; }
+  static clamp(v) { return Math.max(-60, Math.min(60, Math.round(v / 5) * 5)); } // ±6.0 dB、0.5 dB 刻み（0.1 dB 単位）
+  valAt(y) { return EqGraph.clamp(60 - (y - 26) / (220 - 26) * 120); }
+  set(values) { this.values = values.map(EqGraph.clamp); this.draw(); }
+  draw() {
+    const css = getComputedStyle(document.documentElement), c = k => css.getPropertyValue(k).trim();
+    const W = 400, TOP = 26, BOT = 220, y = v => TOP + (BOT - TOP) * (60 - v) / 120, x = i => W / this.n * i + W / this.n / 2;
+    let s = `<line x1="0" x2="${W}" y1="${y(0)}" y2="${y(0)}" stroke="${c("--divider")}" stroke-width="1.5"/>`, path = "";
+    this.values.forEach((v, i) => {
+      s += `<line x1="${x(i)}" x2="${x(i)}" y1="${TOP}" y2="${BOT}" stroke="${c("--surface2")}" stroke-width="6" stroke-linecap="round"/>`;
+      s += `<line x1="${x(i)}" x2="${x(i)}" y1="${y(0)}" y2="${y(v)}" stroke="${c("--accent")}" stroke-width="6" stroke-linecap="round"/>`;
+      if (i === 0) path = `M${x(i)},${y(v)}`;
+      else { const m = (x(i - 1) + x(i)) / 2; path += ` C${m},${y(this.values[i - 1])} ${m},${y(v)} ${x(i)},${y(v)}`; }
+    });
+    s += `<path d="${path}" fill="none" stroke="${c("--accent")}" stroke-opacity=".45" stroke-width="2"/>`;
+    const fs = this.n > 8 ? 10 : 11;
+    this.values.forEach((v, i) => {
+      s += `<circle cx="${x(i)}" cy="${y(v)}" r="${i === this.active ? 12 : 9}" fill="${c("--card")}" stroke="${c("--accent")}" stroke-width="3"/>`;
+      s += `<text x="${x(i)}" y="242" fill="${c("--sub")}" font-size="${fs}" text-anchor="middle">${this.labels[i]}</text>`;
+      s += `<text x="${x(i)}" y="14" fill="${c("--text")}" fill-opacity="${i === this.active ? 1 : .6}" font-size="${fs}" font-weight="700" text-anchor="middle">${(v >= 0 ? "+" : "") + (v / 10).toFixed(1)}</text>`;
+    });
+    this.svg.innerHTML = s;
+  }
+  user() { try { return JSON.parse(localStorage.getItem(this.store) || "{}"); } catch (e) { return {}; } }
+  renderChips() {
+    this.list = this.basePresets.map(p => Object.assign({}, p));
+    const u = this.user();
+    for (const n of Object.keys(u)) this.list.push({ name: "★ " + n, bands: u[n], user: n });
+    this.chipsEl.innerHTML = "";
+    this.list.forEach((p, i) => {
+      const b = document.createElement("button");
+      b.className = "chip";
+      b.textContent = p.name;
+      b.addEventListener("click", () => {
+        if (b.dataset.long) { delete b.dataset.long; return; }
+        this.setChip(i); this.set(p.bands); this.onChange(this.values, p);
+      });
+      if (p.user) {
+        let t = null;
+        b.addEventListener("pointerdown", () => { t = setTimeout(() => { b.dataset.long = "1"; this.remove(p.user); }, 600); });
+        b.addEventListener("pointerup", () => clearTimeout(t));
+        b.addEventListener("pointerleave", () => clearTimeout(t));
+        b.addEventListener("contextmenu", e => e.preventDefault());
+      }
+      this.chipsEl.appendChild(b);
+    });
+  }
+  setChip(i) {
+    Array.from(this.chipsEl.children).forEach((b, k) => b.classList.toggle("on", k === i));
+    if (i >= 0 && this.chipsEl.children[i]) this.chipsEl.children[i].scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+  }
+  save() {
+    const name = (prompt("今の EQ に名前を付けて保存（例: 通勤用）") || "").trim();
+    if (!name) return;
+    const u = this.user();
+    u[name] = this.values.slice();
+    try { localStorage.setItem(this.store, JSON.stringify(u)); } catch (e) { alert("このブラウザでは保存できませんでした"); return; }
+    this.renderChips();
+    this.setChip(this.list.findIndex(p => p.user === name));
+  }
+  remove(name) {
+    if (!confirm("「" + name + "」を削除しますか？")) return;
+    const u = this.user();
+    delete u[name];
+    try { localStorage.setItem(this.store, JSON.stringify(u)); } catch (e) { /* 保存できない環境 */ }
+    this.renderChips();
+  }
+}
+
+// =====================================================================
+// Anker soundcore P31i の通信（Android 版 AnkerProtocol.java と同じ）
+// 送信: 08 EE 00 00 00 CMD_H CMD_L LEN_L LEN_H PAYLOAD SUM
+// 受信: 09 FF 00 00 01 CMD_H CMD_L LEN_L LEN_H PAYLOAD SUM
+// =====================================================================
+const ANKER_SERVICES = ["0216f5da-0000-1000-8000-00805f9b34fb", "011cf5da-0000-1000-8000-00805f9b34fb"];
+const ANKER_WRITE = "00007777-0000-1000-8000-00805f9b34fb";
+const ANKER_NOTIFY = "00008888-0000-1000-8000-00805f9b34fb";
+const A = {
+  REQUEST_STATE: 0x0101, BATTERY_LEVEL: 0x0103, SOUND_MODES_UPDATE: 0x0601, SET_SOUND_MODES: 0x0681,
+  SET_EQUALIZER: 0x0387, SET_SPATIAL: 0x1081, SET_LDAC: 0x01FF, SET_TOUCH_TONE: 0x0183,
+  SET_LOW_BATTERY: 0x1082, SET_AUTO_OFF: 0x0186, SET_LIMIT: 0x2082, SET_DUAL: 0x0B84,
+  SET_BUTTON: 0x0481, RESET_BUTTONS: 0x0482,
+};
+const CUSTOM_EQ_ID = 0xFEFE;
+
+function ankerBuild(cmd, payload = []) {
+  const len = 10 + payload.length, f = new Uint8Array(len);
+  f.set([0x08, 0xEE, 0, 0, 0, cmd >> 8, cmd & 255, len & 255, len >> 8]);
+  f.set(payload, 9);
+  let sum = 0;
+  for (let i = 0; i < len - 1; i++) sum += f[i];
+  f[len - 1] = sum & 255;
+  return f;
+}
+function ankerFeed(rx) {
+  const out = [];
+  let i = 0;
+  while (i + 10 <= rx.length) {
+    if (!(rx[i] === 0x09 && rx[i + 1] === 0xFF && rx[i + 2] === 0 && rx[i + 3] === 0 && rx[i + 4] === 1)) { i++; continue; }
+    const len = rx[i + 7] | (rx[i + 8] << 8);
+    if (len < 10 || len > 4096) { i++; continue; }
+    if (i + len > rx.length) break;
+    let sum = 0;
+    for (let k = i; k < i + len - 1; k++) sum += rx[k];
+    if ((sum & 255) !== rx[i + len - 1]) { i++; continue; }
+    out.push({ cmd: (rx[i + 5] << 8) | rx[i + 6], payload: rx.slice(i + 9, i + len - 1), raw: rx.slice(i, i + len) });
+    i += len;
+  }
+  return { frames: out, used: i };
+}
+const level = b => b <= 9 ? (b + 1) * 10 : -1;
+function ankerParseState(p) {
+  if (p.length < 139) return null;
+  const ascii = (a, b) => String.fromCharCode(...p.slice(a, b));
+  return {
+    raw: p, batteryL: level(p[2]), batteryR: level(p[3]), chargingL: !!p[4], chargingR: !!p[5],
+    firmwareL: ascii(6, 11), firmwareR: ascii(11, 16), batteryCase: level(p[37]),
+    eqPresetId: p[38] | (p[39] << 8), eqBands: Array.from(p.slice(40, 48), v => v - 120),
+    buttons: Array.from(p.slice(110, 118)), soundModes: Array.from(p.slice(119, 127)),
+    touchTone: !!p[128], lowBattery: !!p[129], ldac: !!p[130], dual: !!p[131],
+    autoOff: !!p[132], autoOffIndex: p[133], limit: !!p[134], limitDb: p[135],
+    spatial: !!p[137], spatialMode: p[138],
+  };
+}
+// EQ 設定の中身。HearID（聴力に合わせた補正）はイヤホンの値をそのまま送り返す
+function ankerEqPayload(presetId, bands, st) {
+  const ch = bands.map(v => Math.max(0, Math.min(254, 120 + v)));
+  ch.push(0, 0); // 9・10 バンド目は使われない（公式アプリと同じ 00 00）
+  const hear = st.raw.slice(61, 109);
+  const o = [presetId & 255, presetId >> 8, hear[46], hear[47], ...ch, ...ch, 0, 0, 0,
+    ...hear.slice(1, 21), ...hear.slice(21, 25), hear[25], ...hear.slice(26, 46)];
+  for (let c = 0; c < 2; c++) for (const v of ch) o.push(v, 0);
+  o.push(0, 0);
+  return o;
+}
+const ANKER_PRESETS = [
+  ["Soundcore シグネチャー", [0,0,0,0,0,0,0,0]], ["アコースティック", [40,10,20,20,40,40,40,20]], ["低音ブースト", [40,30,10,0,0,0,0,0]],
+  ["低音カット", [-40,-30,-10,0,0,0,0,0]], ["クラシック", [30,30,-20,-20,0,20,30,40]], ["ポッドキャスト", [-30,20,40,40,30,20,0,-20]],
+  ["ダンス", [20,-30,-10,10,20,20,10,-30]], ["ディープ", [20,10,30,30,20,-20,-40,-50]], ["エレクトロニック", [30,20,-20,20,10,20,30,30]],
+  ["フラット", [-20,-20,-10,0,0,0,-20,-20]], ["ヒップホップ", [20,30,-10,-10,20,-10,20,30]], ["ジャズ", [20,20,-20,-20,0,20,30,40]],
+  ["ラテン", [0,0,-20,-20,-20,0,30,50]], ["ラウンジ", [-10,20,40,30,0,-20,20,10]], ["ピアノ", [0,30,30,20,40,50,30,40]],
+  ["ポップ", [-10,10,30,30,10,-10,-20,-30]], ["R&B", [60,20,-20,-20,20,30,30,40]], ["ロック", [30,20,-10,-10,10,30,40,50]],
+  ["小型スピーカー", [40,30,10,0,-20,-30,-40,-40]], ["トーク", [-30,-20,10,20,20,10,0,-30]], ["高音ブースト", [-20,-20,-20,-10,10,20,20,40]],
+  ["高音カット", [0,0,0,-20,-30,-40,-40,-60]]].map(([name, bands], id) => ({ name, bands, id }));
+const SLOT_LABELS = ["左 1回タップ", "右 1回タップ", "左 2回タップ", "右 2回タップ", "左 3回タップ", "右 3回タップ", "左 長押し", "右 長押し"];
+const BUTTON_SLOTS = [[0,2],[1,2],[0,0],[1,0],[0,5],[1,5],[0,1],[1,1]];
+const ACTIONS = [[0x0F,"なし"],[0,"音量を上げる"],[1,"音量を下げる"],[2,"前の曲"],[3,"次の曲"],[4,"ノイズコントロール切替"],[5,"音声アシスタント"],[6,"再生 / 一時停止"]];
+const SINGLE_ACTIONS = [0x0F, 0, 1, 2, 3, 6];
+const SPATIAL_CODES = [0, 2, 3];
+
+// =====================================================================
+// SOUNDPEATS PopClip 2 の通信（Android 版 Protocol.java と同じ）
+// FF 04 00 LEN 00 VID CMD_H CMD_L PAYLOAD（VID は通常 0A、EQ だけ 1D）。応答は CMD | 0x8000
+// =====================================================================
+const PEATS_SERVICE = "00001100-d102-11e1-9b23-00025b00a5a5";
+const PEATS_WRITE = "00001101-d102-11e1-9b23-00025b00a5a5";
+const PEATS_NOTIFY = "00001102-d102-11e1-9b23-00025b00a5a5";
+const P = {
+  RESET: 0x0305, BAT_L: 0x0306, BAT_R: 0x0307, FIRMWARE: 0x0309, CASE: 0x0323, RESTART: 0x0316,
+  GAME: [0x030E, 0x030F], TOUCH_OFF: [0x0312, 0x0313], IN_EAR: [0x030C, 0x030D], DUAL: [0x0314, 0x0315],
+  MOVIE: [0x0327, 0x0328], DYN_EQ: [0x0331, 0x0332], LDAC: [0x0338, 0x0339], DYN_BASS: [0x033C, 0x033D],
+  ADAPTIVE_VOL: [0x0346, 0x0347], DOLBY: [0x0348, 0x0349], SPACE: [0x0357, 0x0358], PRIVACY: [0x036B, 0x036C],
+  LED: [0x030A, 0x030B], LE_AUDIO: [0x0335, 0x0334], RING_L: [0x034A, 0x033A], RING_R: [0x034B, 0x033B],
+  SET_SPACE_MODE: 0x0359, NOISE: [0x0310, 0x0311], PROMPT_VOL: [0x0319, 0x0320], LANGUAGE: [0x0321, 0x0322],
+  HEARING: [0x034E, 0x034F], AUTO_OFF: [0x036E, 0x036F], BALANCE: [0x0375, 0x0376],
+  HISTORY: 0x0352, SET_CONNECT: 0x0353, KEYMAP: [0x03AA, 0x03AB], RESET_KEYMAP: 0x03AC, EQ_V2: 0x0E02,
+};
+function peatsBuild(cmd, payload = []) {
+  const eq = cmd === P.EQ_V2;
+  return new Uint8Array([0xFF, 0x04, 0x00, payload.length, 0x00, eq ? 0x1D : 0x0A, cmd >> 8, cmd & 255, ...payload]);
+}
+function peatsFeed(rx) {
+  const out = [];
+  let i = 0;
+  while (i + 8 <= rx.length) {
+    if (!(rx[i] === 0xFF && rx[i + 1] === 0x04 && rx[i + 2] === 0x00)) { i++; continue; }
+    const len = rx[i + 3];
+    if (i + 8 + len > rx.length) break;
+    const cmd = (rx[i + 6] << 8) | rx[i + 7];
+    out.push({ cmd: cmd & 0x7FFF, payload: rx.slice(i + 8, i + 8 + len), raw: rx.slice(i, i + 8 + len) });
+    i += 8 + len;
+  }
+  return { frames: out, used: i };
+}
+const PEATS_FREQS = [32, 65, 180, 500, 800, 1800, 3600, 5500, 8000, 12000];
+const PEATS_PRESETS = [
+  ["フラット", [0,0,0,0,0,0,0,0,0,0]], ["低音強調", [50,45,35,20,5,0,0,0,0,0]], ["高音強調", [0,0,0,0,0,5,20,35,45,50]],
+  ["ボーカル", [-15,-10,0,15,30,35,30,15,0,-5]], ["ドンシャリ", [40,35,20,0,-15,-15,0,20,35,40]],
+  ["低音控えめ", [-40,-35,-25,-10,0,0,0,0,0,0]], ["ポッドキャスト", [-30,-20,-5,10,25,30,25,10,-5,-15]]].map(([name, bands]) => ({ name, bands }));
+/** EQ 1 バンド分（V2 形式 10 バイト）。g は 0.1 dB 単位 */
+function peatsEqBand(index1, freq, g) {
+  const f = Math.round(freq * 3), gg = (g * 6) & 0xFFFF, q = 4096;
+  return [10, index1, 0, 0, f >> 8, f & 255, gg >> 8, gg & 255, q >> 8, q & 255];
+}
+
+// =====================================================================
+// Bluetooth（両機種共通）
+// =====================================================================
+let device = null, kind = null, writeChar = null, pollTimer = null;
+let rx = new Uint8Array(0);
+const queue = [];
+let writing = false;
+
+const proto = () => kind === "anker" ? { build: ankerBuild, feed: ankerFeed } : { build: peatsBuild, feed: peatsFeed };
+
+async function send(cmd, payload) {
+  if (!kind) return;
+  queue.push(proto().build(cmd, payload));
+  if (writing) return;
+  writing = true;
+  try {
+    while (queue.length) {
+      const f = queue.shift();
+      log("→ " + hex(f));
+      await writeFrame(f);
+      await sleep(80);
+    }
+  } catch (e) {
+    log("送信エラー: " + e.message);
+  } finally {
+    writing = false;
+  }
+}
+
+// P31i は「応答ありの書き込み」に完了の合図を返さない（返事は通知で来る）ので、対応していれば「応答なし」で送る。
+// PopClip 2 の書き込み口は「応答あり」だけに対応している。長い命令が一度に書けないときは 20 バイトずつに分ける
+let chunked = false;
+async function writeFrame(f) {
+  if (!writeChar) throw new Error("接続されていません");
+  const noResp = writeChar.properties.writeWithoutResponse;
+  const write = v => noResp ? writeChar.writeValueWithoutResponse(v) : writeChar.writeValueWithResponse(v);
+  if (!chunked || f.length <= 20) {
+    for (let attempt = 0; ; attempt++) {
+      try { await write(f); return; }
+      catch (e) {
+        if (/in progress/i.test(e.message) && attempt < 3) { await sleep(250); continue; } // 「処理中」は待ってやり直す
+        if (f.length <= 20) throw e;
+        chunked = true; log("分割して送る方式に切り替えます"); break;
+      }
+    }
+  }
+  for (let i = 0; i < f.length; i += 20) { await write(f.slice(i, i + 20)); await sleep(20); }
+}
+
+// 接続・切断の記録（接続の欄に表示。切れても見られるように）
+const connLines = [];
+function connLog(s) {
+  const t = new Date().toTimeString().slice(0, 8);
+  connLines.push(t + " " + s);
+  if (connLines.length > 40) connLines.shift();
+  $("connLog").textContent = connLines.join("\n");
+  $("btnCopy2").classList.remove("hide");
+  log("[接続] " + s);
+}
+
+let userDisconnect = false, retries = 0, connectedAt = 0, connecting = false;
+const MAX_RETRIES = 5;
+function setConnecting(on) {
+  connecting = on;
+  $("btnPeats").disabled = $("btnP31i").disabled = on;
+}
+
+async function connect(target) {
+  if (!navigator.bluetooth || connecting) return; // 前の接続が終わるまで次は受け付けない
+  setConnecting(true);
+  if (device) { userDisconnect = true; try { device.gatt.disconnect(); } catch (e) { /* もう切れている */ } device = null; }
+  try {
+    const optionalServices = [PEATS_SERVICE, ...ANKER_SERVICES];
+    if (target === "peats") {
+      // PopClip 2 は「BT8912F」という名前で、メーカー情報の先頭が 53 13（"S19"）の電波を出す
+      const tries = [
+        [{ name: "BT8912F" }, { manufacturerData: [{ companyIdentifier: 0x000E, dataPrefix: new Uint8Array([0x53, 0x13]) }] }, { namePrefix: "SOUNDPEATS" }],
+        [{ name: "BT8912F" }, { namePrefix: "SOUNDPEATS" }],
+      ];
+      for (let i = 0; i < tries.length; i++) {
+        try { device = await navigator.bluetooth.requestDevice({ filters: tries[i], optionalServices }); break; }
+        catch (e) { if (e.name !== "TypeError" || i === tries.length - 1) throw e; } // 書き方に未対応なら次へ
+      }
+    } else {
+      // P31i は名前もサービス番号も出さないことがあるので、すべての機器から選ぶ
+      device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true, optionalServices });
+    }
+    device.addEventListener("gattserverdisconnected", onDisconnected);
+    connLog("選んだ機器: " + (device.name || "(名前なし)") + " / id " + device.id.slice(0, 8));
+    retries = 0;
+    await setup(true, device);
+  } catch (e) {
+    if (e.name === "NotFoundError") setStatus("", "未接続（選ばれませんでした）");
+    else { setStatus("bad", "接続できませんでした: " + e.message); connLog("失敗: " + e.name + " " + e.message); }
+  } finally {
+    setConnecting(false);
+  }
+}
+
+/** GATT 接続して、どちらのイヤホンか判別し、操作用の口を準備する。再接続でも使う */
+async function setup(first, dev) {
+  setStatus("warn", first ? "接続中…" : "再接続中…（" + retries + "/" + MAX_RETRIES + "）");
+  userDisconnect = false;
+  const server = await dev.gatt.connect();
+  if (dev !== device) { try { dev.gatt.disconnect(); } catch (e) { /* 無視 */ } return; }
+  connLog("GATT 接続しました");
+  let svc = null, k = null;
+  try { svc = await server.getPrimaryService(PEATS_SERVICE); k = "peats"; } catch (e) { /* PopClip 2 ではない */ }
+  if (!svc) for (const u of ANKER_SERVICES) { try { svc = await server.getPrimaryService(u); k = "anker"; break; } catch (e) { /* 次を試す */ } }
+  if (!svc) {
+    userDisconnect = true;
+    try { dev.gatt.disconnect(); } catch (e) { /* もう切れている */ }
+    if (dev === device) device = null;
+    throw new Error("この機器にはイヤホンの操作用の口がありません。もう一度ボタンを押して、別の機器を選んでください。");
+  }
+  const changed = kind !== k;
+  kind = k;
+  if (changed) resetUi(k);
+  writeChar = await svc.getCharacteristic(k === "anker" ? ANKER_WRITE : PEATS_WRITE);
+  const notify = await svc.getCharacteristic(k === "anker" ? ANKER_NOTIFY : PEATS_NOTIFY);
+  notify.addEventListener("characteristicvaluechanged", ev => onChunk(new Uint8Array(ev.target.value.buffer)));
+  await notify.startNotifications();
+  connLog("通知の受け取りを開始（" + (k === "anker" ? "P31i" : "PopClip 2") + "）");
+  await sleep(400); // 通知の準備が終わる前に書き込むと「処理中」で弾かれるため、少し待つ
+  connectedAt = Date.now();
+  rx = new Uint8Array(0);
+  queue.length = 0;
+  writing = false;
+  chunked = false;
+  setStatus("good", "接続しました（" + (k === "anker" ? "soundcore P31i" : "SOUNDPEATS PopClip 2") + "）");
+  $("connectBox").classList.add("hide");
+  $("main").classList.remove("hide");
+  $("main").classList.toggle("disabled", !(k === "anker" ? anker.state : peats.ready));
+  (k === "anker" ? anker : peats).queryAll();
+  clearInterval(pollTimer);
+  pollTimer = setInterval(() => (kind === "anker" ? anker : peats).poll(), k === "anker" ? 60000 : 30000);
+}
+
+function onChunk(chunk) {
+  const n = new Uint8Array(rx.length + chunk.length);
+  n.set(rx); n.set(chunk, rx.length);
+  const { frames, used } = proto().feed(n);
+  rx = n.slice(used);
+  if (rx.length > 8192) rx = new Uint8Array(0);
+  for (const fr of frames) {
+    log("← " + hex(fr.raw));
+    (kind === "anker" ? anker : peats).onFrame(fr);
+  }
+}
+
+async function onDisconnected(ev) {
+  if (ev && ev.target && ev.target !== device) return; // 前に選んだ別の機器の切断は無視
+  clearInterval(pollTimer);
+  writeChar = null;
+  const secs = connectedAt ? Math.round((Date.now() - connectedAt) / 1000) : 0;
+  connLog("切断されました（接続していた時間 " + secs + " 秒）" + (userDisconnect ? "・自分で切断" : ""));
+  connectedAt = 0;
+  if (!userDisconnect && device && retries < MAX_RETRIES && !connecting) {
+    retries++; // 切れたら、選び直さずに自動でつなぎ直す
+    await sleep(1000 * retries);
+    try { await setup(false, device); return; }
+    catch (e) { connLog("再接続に失敗: " + e.name + " " + e.message); if (device && retries < MAX_RETRIES) return onDisconnected(); }
+  }
+  setStatus("bad", userDisconnect ? "切断しました" : "切断されました。もう一度接続してください");
+  $("connectBox").classList.remove("hide");
+  $("main").classList.add("disabled");
+}
+
+// 機種に合わせて画面を切り替える
+let tabIndex = 0;
+function resetUi(k) {
+  $("ankerPages").classList.toggle("hide", k !== "anker");
+  $("peatsPages").classList.toggle("hide", k !== "peats");
+  $("commonBottom").classList.remove("hide");
+  $("title").textContent = k === "anker" ? "soundcore P31i" : "SOUNDPEATS PopClip 2";
+  ["batL", "batR", "batC"].forEach(id => { $(id).textContent = "—"; $(id).classList.remove("small"); });
+  ["barL", "barR", "barC"].forEach(id => $(id).style.width = "0");
+  $("fw").textContent = "ファームウェア: —";
+  showTab(tabIndex);
+}
+function showTab(i) {
+  tabIndex = i;
+  [0, 1, 2].forEach(k => { $("page" + k).classList.toggle("hide", k !== i); $("pp" + k).classList.toggle("hide", k !== i); });
+  $("commonBottom").classList.toggle("hide", i !== 2 || !kind);
+  window.scrollTo(0, 0);
+}
+new Seg($("tabs"), showTab).set(0);
+
+// =====================================================================
+// P31i の画面
+// =====================================================================
+const anker = {
+  state: null, updating: false,
+  queryAll() { send(A.REQUEST_STATE); },
+  poll() { send(A.REQUEST_STATE); },
+  requeryTimer: null,
+  requery() { clearTimeout(this.requeryTimer); this.requeryTimer = setTimeout(() => send(A.REQUEST_STATE), 500); },
+  onFrame(fr) {
+    this.updating = true;
+    try {
+      if (fr.cmd === A.REQUEST_STATE) {
+        const s = ankerParseState(fr.payload);
+        if (s) { this.state = s; this.show(); $("main").classList.remove("disabled"); }
+      } else if (fr.cmd === A.BATTERY_LEVEL && this.state && fr.payload.length >= 2) {
+        this.state.batteryL = level(fr.payload[0]); this.state.batteryR = level(fr.payload[1]); this.showBattery();
+      } else if (fr.cmd === A.SOUND_MODES_UPDATE && this.state && fr.payload.length >= 8) {
+        this.state.soundModes = Array.from(fr.payload.slice(0, 8)); this.showSoundModes();
+      }
+    } finally {
+      this.updating = false;
+    }
+  },
+  showBattery() {
+    const s = this.state;
+    showBatteryTile("batL", "barL", "chgL", s.batteryL, s.chargingL);
+    showBatteryTile("batR", "barR", "chgR", s.batteryR, s.chargingR);
+    showBatteryTile("batC", "barC", null, s.batteryCase, false);
+  },
+  showSoundModes() {
+    const m = this.state.soundModes;
+    ambient.set(Math.min(2, m[0]));
+    const manual = Math.max(1, Math.min(5, m[1] >> 4));
+    $("manual").value = manual;
+    $("manualVal").textContent = manual + " / 5";
+    adaptive.set(Math.min(2, m[1] & 15));
+    transparency.set(Math.min(1, m[2]));
+    ncMode.set(Math.min(2, m[3]));
+    $("wind").checked = !!(m[4] & 1);
+    scene.set(Math.min(2, m[6]));
+    showNoiseOptions();
+  },
+  show() {
+    const s = this.state;
+    $("fw").textContent = "ファームウェア: 左 " + s.firmwareL + " / 右 " + s.firmwareR;
+    this.showBattery();
+    this.showSoundModes();
+    ankerEq.set(s.eqBands);
+    ankerEq.setChip(s.eqPresetId < ANKER_PRESETS.length ? s.eqPresetId : -1);
+    $("spatial").checked = s.spatial;
+    $("spatialBox").classList.toggle("hide", !s.spatial);
+    spatialMode.set(Math.max(0, SPATIAL_CODES.indexOf(s.spatialMode)));
+    $("ldac").checked = s.ldac;
+    $("touchTone").checked = s.touchTone;
+    $("lowBattery").checked = s.lowBattery;
+    $("dual").checked = s.dual;
+    $("autoOff").value = s.autoOff ? Math.min(4, s.autoOffIndex + 1) : 0;
+    $("limit").checked = s.limit;
+    if (s.limitDb >= 75 && s.limitDb <= 100) $("limitDb").value = String(s.limitDb - s.limitDb % 5);
+    buttonSelects.forEach((sel, slot) => {
+      const code = s.buttons[slot] & 15; // 下位 4 ビット = 左右そろって接続中のときの操作
+      sel.value = Array.from(sel.options).some(o => Number(o.value) === code) ? code : 0x0F;
+    });
+  },
+};
+
+const ambient = new Seg($("ambient"), () => { showNoiseOptions(); sendSoundModes(); });
+const ncMode = new Seg($("ncMode"), () => { showNoiseOptions(); sendSoundModes(); });
+const adaptive = new Seg($("adaptive"), () => sendSoundModes());
+const scene = new Seg($("scene"), () => sendSoundModes());
+const transparency = new Seg($("transparency"), () => sendSoundModes());
+const spatialMode = new Seg($("spatialMode"), () => { if ($("spatial").checked) sendSpatial(); });
+$("manual").addEventListener("input", () => $("manualVal").textContent = $("manual").value + " / 5");
+$("manual").addEventListener("change", () => sendSoundModes());
+$("wind").addEventListener("change", () => sendSoundModes());
+
+function showNoiseOptions() {
+  $("ncBox").classList.toggle("hide", ambient.sel !== 0);
+  $("trBox").classList.toggle("hide", ambient.sel !== 1);
+  $("manualBox").classList.toggle("hide", ncMode.sel !== 0);
+  $("adaptiveBox").classList.toggle("hide", ncMode.sel !== 1);
+  $("sceneBox").classList.toggle("hide", ncMode.sel !== 2);
+}
+function sendSoundModes() {
+  const s = anker.state;
+  if (anker.updating || !s) return;
+  const m = s.soundModes.slice();
+  m[0] = Math.max(0, ambient.sel);
+  m[1] = (Number($("manual").value) << 4) | Math.max(0, adaptive.sel);
+  m[2] = Math.max(0, transparency.sel);
+  m[3] = Math.max(0, ncMode.sel);
+  m[4] = (m[4] & ~1) | ($("wind").checked ? 1 : 0);
+  m[5] = 0;
+  m[6] = Math.max(0, scene.sel);
+  send(A.SET_SOUND_MODES, m);
+  anker.requery();
+}
+function ankerFlag(id, cmd) {
+  $(id).addEventListener("change", () => { if (anker.updating) return; send(cmd, [$(id).checked ? 1 : 0]); anker.requery(); });
+}
+ankerFlag("ldac", A.SET_LDAC);
+ankerFlag("touchTone", A.SET_TOUCH_TONE);
+ankerFlag("lowBattery", A.SET_LOW_BATTERY);
+ankerFlag("dual", A.SET_DUAL);
+$("spatial").addEventListener("change", () => {
+  $("spatialBox").classList.toggle("hide", !$("spatial").checked);
+  if (!anker.updating) sendSpatial();
+});
+function sendSpatial() {
+  const s = anker.state;
+  if (anker.updating || !s) return;
+  if ($("spatial").checked) send(A.SET_SPATIAL, [1, 0, SPATIAL_CODES[Math.max(0, spatialMode.sel)]]);
+  else send(A.SET_EQUALIZER, ankerEqPayload(s.eqPresetId, ankerEq.values, s)); // オフは EQ を送り直す（公式と同じ）
+  anker.requery();
+}
+$("autoOff").addEventListener("change", () => {
+  const i = Number($("autoOff").value), s = anker.state;
+  send(A.SET_AUTO_OFF, [i === 0 ? 0 : 1, i === 0 ? (s ? s.autoOffIndex : 0) : i - 1]);
+  anker.requery();
+});
+function sendLimit() {
+  if (anker.updating || !anker.state) return;
+  send(A.SET_LIMIT, [$("limit").checked ? 1 : 0, Number($("limitDb").value)]);
+  anker.requery();
+}
+$("limit").addEventListener("change", sendLimit);
+$("limitDb").addEventListener("change", sendLimit);
+
+const buttonSelects = [];
+SLOT_LABELS.forEach((label, slot) => {
+  const codes = slot < 2 ? SINGLE_ACTIONS : ACTIONS.map(a => a[0]);
+  const row = el(`<div class="row"><div class="t"><b>${label}</b></div><select>${codes.map(c => `<option value="${c}">${ACTIONS.find(a => a[0] === c)[1]}</option>`).join("")}</select></div>`);
+  const sel = row.querySelector("select");
+  sel.addEventListener("change", () => {
+    const [side, id] = BUTTON_SLOTS[slot];
+    send(A.SET_BUTTON, [side, id, Number(sel.value)]);
+    anker.requery();
+  });
+  buttonSelects.push(sel);
+  $("buttons").appendChild(row);
+});
+$("btnResetButtons").addEventListener("click", () => {
+  if (confirm("タッチ操作の割り当てを初期状態に戻しますか？")) { send(A.RESET_BUTTONS); anker.requery(); }
+});
+
+const ankerEq = new EqGraph(document.querySelector("#page0 .eqCard"),
+  ["100", "200", "400", "800", "1.6k", "3.2k", "6.4k", "12.8k"],
+  (values, preset) => {
+    const s = anker.state;
+    if (anker.updating || !s) return;
+    send(A.SET_EQUALIZER, ankerEqPayload(preset && preset.id !== undefined ? preset.id : CUSTOM_EQ_ID, values, s));
+    anker.requery();
+  }, null, "earbuds_p31i_presets", ANKER_PRESETS);
+
+// =====================================================================
+// PopClip 2 の画面（イヤホンが応答した機能だけ表示する）
+// =====================================================================
+const LANGS = ["英語", "中国語", "ドイツ語", "日本語", "フランス語", "スペイン語", "イタリア語"];
+const AUTO_OFF_MIN = [0, 5, 10, 30, 60, 120];
+const NOISE_LABELS = ["通常", "ノイズキャンセリング", "外音取り込み", "環境に自動適応", "弱めのノイズキャンセリング"];
+const KEY_OPTIONS = ["", "左 1回タップ", "右 1回タップ", "左 2回タップ", "右 2回タップ", "左 3回タップ", "右 3回タップ", "左 長押し", "右 長押し"];
+const KEY_FUNCS = ["なし", "音量を上げる", "音量を下げる", "再生 / 一時停止", "ゲームモード切替", "前の曲", "次の曲", "ノイズ制御切替", "音声アシスタント"];
+
+const peats = {
+  ready: false, updating: false, supported: new Set(), toggles: {}, setToGet: {}, state: {},
+  firmwareCode: "", history: new Map(),
+  queryAll() {
+    this.history.clear(); this.renderHistory();
+    const gets = [P.FIRMWARE, P.BAT_L, P.BAT_R, P.CASE, P.HISTORY, P.KEYMAP, P.SPACE[0], P.PRIVACY[0], P.DYN_EQ[0], P.DYN_BASS[0],
+      P.MOVIE[0], P.DOLBY[0], P.GAME[0], P.LDAC[0], P.LE_AUDIO[0], P.NOISE[0], P.TOUCH_OFF[0], P.IN_EAR[0], P.RING_L[0], P.RING_R[0],
+      P.DUAL[0], P.LANGUAGE[0], P.PROMPT_VOL[0], P.BALANCE[0], P.HEARING[0], P.ADAPTIVE_VOL[0], P.AUTO_OFF[0], P.LED[0]];
+    for (const g of gets) send(g);
+    setTimeout(() => { this.ready = true; if (kind === "peats") $("main").classList.remove("disabled"); this.applyVisibility(); }, 4000);
+  },
+  poll() { send(P.BAT_L); send(P.BAT_R); send(P.CASE); },
+  requery(get) { setTimeout(() => send(get), 300); },
+  onFrame(fr) {
+    if (this.setToGet[fr.cmd] !== undefined) return; // 設定の応答は取り直しで反映する
+    this.updating = true;
+    try { this.handle(fr); } finally { this.updating = false; }
+  },
+  handle(fr) {
+    const cmd = fr.cmd, p = fr.payload;
+    if (cmd === P.HISTORY) { this.supported.add(cmd); this.parseHistory(p); this.applyVisibility(); return; }
+    if (cmd === P.FIRMWARE) { // ファームウェアとタッチ割り当ては結果コード無しで値だけが返る（先頭 00 が付く機種もある）
+      const q = p[0] === 0 ? p.slice(1) : p;
+      const s = String.fromCharCode(...q).trim();
+      this.firmwareCode = s.split("_")[0];
+      $("fw").textContent = "ファームウェア: " + s;
+      return;
+    }
+    if (cmd === P.KEYMAP[0]) {
+      this.supported.add(cmd);
+      this.parseKeymap(p.length % 2 === 1 && p[0] === 0 ? p.slice(1) : p);
+      this.applyVisibility();
+      return;
+    }
+    let v;
+    if (p.length === 1 && this.toggles[cmd]) v = p[0];
+    else { if (!(p.length > 0 && p[0] === 0)) return; v = p.length > 1 ? p[1] : -1; }
+    this.supported.add(cmd);
+    const sw = this.toggles[cmd];
+    if (sw && (v === 0 || v === 1)) { sw.checked = v === 1; this.state[cmd] = v === 1; }
+    switch (cmd) {
+      case P.BAT_L: showBatteryTile("batL", "barL", "chgL", v >= 0 && v <= 100 ? v : -1, false); break;
+      case P.BAT_R: showBatteryTile("batR", "barR", "chgR", v >= 0 && v <= 100 ? v : -1, false); break;
+      case P.CASE: showBatteryTile("batC", "barC", null, p.length === 2 && v <= 100 ? v : -1, false); break;
+      case P.SPACE[0]: this.spaceMode.set(p.length > 2 && p[2] === 2 ? 1 : 0); break;
+      case P.NOISE[0]: if (v >= 0 && v < NOISE_LABELS.length) this.selects.noise.value = v; break;
+      case P.LANGUAGE[0]: if (v >= 0 && v < LANGS.length) this.selects.lang.value = v; break;
+      case P.PROMPT_VOL[0]: if (v >= 0 && v <= 100) this.sliders.prompt.set(v); break;
+      case P.BALANCE[0]: if (v >= 0 && v <= 100) this.sliders.balance.set(v); break;
+      case P.HEARING[0]: if (v >= 50 && v <= 100) this.sliders.hearing.set(v); break;
+      case P.AUTO_OFF[0]: {
+        let minutes = 0;
+        for (let i = 1; i < p.length; i++) minutes = (minutes << 8) | p[i];
+        if (AUTO_OFF_MIN.includes(minutes)) this.selects.autoOff.value = minutes;
+        break;
+      }
+    }
+    this.applyVisibility();
+  },
+  applyVisibility() {
+    document.querySelectorAll("#peatsPages [data-get]").forEach(r => {
+      let show = this.supported.has(Number(r.dataset.get));
+      if (r.dataset.get == P.SPACE[0] && r.classList.contains("spaceMode")) show = show && this.toggles[P.SPACE[0]].checked;
+      r.classList.toggle("hide", !show);
+    });
+    document.querySelectorAll("#peatsPages .pcard").forEach(c => {
+      const any = c.querySelector("[data-always]") || Array.from(c.querySelectorAll("[data-get]")).some(r => !r.classList.contains("hide"));
+      c.classList.toggle("hide", !any);
+      if (c.previousElementSibling && c.previousElementSibling.classList.contains("section")) c.previousElementSibling.classList.toggle("hide", !any);
+    });
+  },
+  parseKeymap(p) {
+    const box = $("ppKeys");
+    box.innerHTML = "";
+    for (let i = 0; i + 1 < p.length; i += 2) {
+      const opt = p[i], func = p[i + 1];
+      if (opt < 1 || opt > 8) continue;
+      const row = el(`<div class="row"><div class="t"><b>${KEY_OPTIONS[opt]}</b></div><select>${KEY_FUNCS.map((f, k) => `<option value="${k}">${f}</option>`).join("")}</select></div>`);
+      const sel = row.querySelector("select");
+      sel.value = func < KEY_FUNCS.length ? func : 0;
+      sel.addEventListener("change", () => { send(P.KEYMAP[1], [opt, Number(sel.value)]); this.requery(P.KEYMAP[0]); });
+      box.appendChild(row);
+    }
+  },
+  parseHistory(p) {
+    if (p.length < 9) return;
+    const mac = Array.from(p.slice(2, 8), b => b.toString(16).padStart(2, "0").toUpperCase()).join(":");
+    let end = 8;
+    while (end < p.length && p[end] !== 0) end++;
+    const name = new TextDecoder().decode(p.slice(8, end)).trim() || "(名前なし)";
+    this.history.set(mac, { name, mac, connected: p[1] !== 0 });
+    this.renderHistory();
+  },
+  renderHistory() {
+    const box = $("ppHistory");
+    if (!box) return;
+    box.innerHTML = this.history.size ? "" : '<div class="note">読み込み中…</div>';
+    for (const h of this.history.values()) {
+      const row = el(`<div class="row"><div class="t"><b><span class="dev ${h.connected ? "on" : ""}"></span>${esc(h.name)}</b><small>${h.connected ? "接続中" : "未接続"}</small></div><button class="btn small">${h.connected ? "切断" : "接続"}</button></div>`);
+      row.querySelector("button").addEventListener("click", () => {
+        send(P.SET_CONNECT, [...h.mac.split(":").map(x => parseInt(x, 16)), h.connected ? 0 : 1]);
+        setTimeout(() => { this.history.clear(); this.renderHistory(); send(P.HISTORY); }, 1500);
+      });
+      box.appendChild(row);
+    }
+  },
+};
+
+// PopClip 2 の画面を組み立てる
+(function buildPeats() {
+  const toggle = (get, set, label, desc) => {
+    const row = el(`<label class="row" data-get="${get}"><div class="t"><b>${label}</b>${desc ? `<small>${desc}</small>` : ""}</div><span class="sw"><input type="checkbox"><span></span></span></label>`);
+    const sw = row.querySelector("input");
+    sw.addEventListener("change", () => {
+      if (peats.updating) return;
+      send(set, [sw.checked ? 1 : 0]);
+      peats.requery(get);
+      if (get === P.SPACE[0]) setTimeout(() => peats.applyVisibility(), 0);
+    });
+    peats.toggles[get] = sw;
+    peats.setToGet[set] = get;
+    return row;
+  };
+  const select = (get, label, desc, options, onPick) => {
+    const row = el(`<div class="row" data-get="${get}"><div class="t"><b>${label}</b>${desc ? `<small>${desc}</small>` : ""}</div><select>${options.map(([v, t]) => `<option value="${v}">${t}</option>`).join("")}</select></div>`);
+    const sel = row.querySelector("select");
+    sel.addEventListener("change", () => onPick(Number(sel.value)));
+    return [row, sel];
+  };
+  const slider = (get, label, min, max, fmt, onStop) => {
+    const row = el(`<div class="block" data-get="${get}"><b style="display:flex;justify-content:space-between">${label}<span style="color:var(--accent);font-weight:700"></span></b><input type="range" min="${min}" max="${max}" step="1"></div>`);
+    const input = row.querySelector("input"), val = row.querySelector("b span");
+    const set = v => { input.value = v; val.textContent = fmt(v); };
+    input.addEventListener("input", () => val.textContent = fmt(Number(input.value)));
+    input.addEventListener("change", () => onStop(Number(input.value)));
+    return [row, { set }];
+  };
+  const card = (page, title, rows, always) => {
+    $(page).appendChild(el(`<div class="section">${title}</div>`));
+    const c = el(`<div class="card pcard"></div>`);
+    if (always) c.dataset.always = "1";
+    rows.forEach(r => c.appendChild(r));
+    $(page).appendChild(c);
+    return c;
+  };
+
+  // サウンド
+  const eqCard = el(`<div class="card" data-always="1"></div>`);
+  $("pp0").appendChild(el(`<div class="section">イコライザー</div>`));
+  $("pp0").appendChild(eqCard);
+  peats.eq = new EqGraph(eqCard, ["32", "65", "180", "500", "800", "1.8k", "3.6k", "5.5k", "8k", "12k"],
+    values => sendPeatsEq(values), null, "earbuds_popclip2_presets", PEATS_PRESETS);
+  try { const last = JSON.parse(localStorage.getItem("earbuds_popclip2_last_eq") || "null"); if (last) peats.eq.set(last); } catch (e) { /* 無し */ }
+
+  const spaceRow = toggle(P.SPACE[0], P.SPACE[1], "空間オーディオ", "立体的に広がる音にします");
+  const spaceModeRow = el(`<div class="block spaceMode" data-get="${P.SPACE[0]}"><b>空間オーディオのモード</b><div class="seg"><button>音楽</button><button>映画</button></div></div>`);
+  peats.spaceMode = new Seg(spaceModeRow.querySelector(".seg"), i => { send(P.SET_SPACE_MODE, [i === 0 ? 1 : 2]); peats.requery(P.SPACE[0]); });
+  const [noiseRow, noiseSel] = select(P.NOISE[0], "ノイズ制御", null, NOISE_LABELS.map((t, i) => [i, t]), v => { send(P.NOISE[1], [v]); peats.requery(P.NOISE[0]); });
+  card("pp0", "サウンド効果", [spaceRow, spaceModeRow,
+    toggle(P.PRIVACY[0], P.PRIVACY[1], "プライバシーモード", "周りへの音漏れを抑えます"),
+    toggle(P.DYN_EQ[0], P.DYN_EQ[1], "ダイナミック EQ", "音量に合わせて音質を自動で整えます"),
+    toggle(P.DYN_BASS[0], P.DYN_BASS[1], "ダイナミックバス", "低音を強調します"),
+    toggle(P.MOVIE[0], P.MOVIE[1], "映画モード", null),
+    toggle(P.DOLBY[0], P.DOLBY[1], "ドルビー効果", null),
+    toggle(P.GAME[0], P.GAME[1], "ゲームモード", "音の遅れを小さくします"),
+    toggle(P.LDAC[0], P.LDAC[1], "LDAC（高音質）", "対応するスマホのみ。iPhone は LDAC に対応していません"),
+    toggle(P.LE_AUDIO[0], P.LE_AUDIO[1], "LE Audio", null),
+    noiseRow]);
+
+  // 操作
+  card("pp1", "タッチ操作", [
+    toggle(P.TOUCH_OFF[0], P.TOUCH_OFF[1], "タッチ操作を無効にする", "誤操作を防ぎます"),
+    toggle(P.IN_EAR[0], P.IN_EAR[1], "装着検出", "外すと自動で一時停止します")]);
+  const keys = el(`<div data-get="${P.KEYMAP[0]}"><div id="ppKeys"></div><div class="btns"><button class="btn">初期状態に戻す</button></div></div>`);
+  keys.querySelector("button").addEventListener("click", () => {
+    if (confirm("タッチ操作の割り当てを初期状態に戻しますか？")) { send(P.RESET_KEYMAP); peats.requery(P.KEYMAP[0]); }
+  });
+  card("pp1", "ジェスチャーの割り当て", [keys]);
+  card("pp1", "イヤホンを探す", [
+    el(`<div class="note" style="padding-top:10px">大きな音が鳴ります。耳から外したことを確認してから使ってください。</div>`),
+    toggle(P.RING_L[0], P.RING_L[1], "左のイヤホンを鳴らす", null),
+    toggle(P.RING_R[0], P.RING_R[1], "右のイヤホンを鳴らす", null)]);
+
+  // 本体
+  const hist = el(`<div data-get="${P.HISTORY}"><div class="note" style="padding-top:10px">接続したことのある機器</div><div id="ppHistory"></div>
+    <div class="btns"><button class="btn">一覧を更新</button></div></div>`);
+  hist.querySelector("button").addEventListener("click", () => { peats.history.clear(); peats.renderHistory(); send(P.HISTORY); });
+  card("pp2", "接続", [toggle(P.DUAL[0], P.DUAL[1], "2台同時接続", "スマホとパソコンなど 2 台に同時につなぎます"), hist]);
+  const [langRow, langSel] = select(P.LANGUAGE[0], "音声ガイドの言語", null, LANGS.map((t, i) => [i, t]), v => { send(P.LANGUAGE[1], [v]); peats.requery(P.LANGUAGE[0]); });
+  const [promptRow, prompt] = slider(P.PROMPT_VOL[0], "音声ガイドの音量", 0, 100, v => v + "%", v => { send(P.PROMPT_VOL[1], [v]); peats.requery(P.PROMPT_VOL[0]); });
+  const [balRow, bal] = slider(P.BALANCE[0], "左右の音量バランス", 0, 100, v => v === 50 ? "中央" : v < 50 ? "左 +" + (50 - v) : "右 +" + (v - 50), v => { send(P.BALANCE[1], [v]); peats.requery(P.BALANCE[0]); });
+  const [hearRow, hear] = slider(P.HEARING[0], "最大音量の上限", 50, 100, v => v + "%", v => { send(P.HEARING[1], [v]); peats.requery(P.HEARING[0]); });
+  card("pp2", "音声ガイド・音量", [langRow, promptRow, balRow, hearRow,
+    toggle(P.ADAPTIVE_VOL[0], P.ADAPTIVE_VOL[1], "適応音量", "周りの騒がしさに合わせて音量を調整します")]);
+  const [autoRow, autoSel] = select(P.AUTO_OFF[0], "自動電源オフ", "使っていないときに電源を切ります",
+    AUTO_OFF_MIN.map(m => [m, m === 0 ? "オフ" : m + "分"]), v => { send(P.AUTO_OFF[1], [v]); peats.requery(P.AUTO_OFF[0]); });
+  const restart = el(`<div class="btns" data-always="1"><button class="btn">イヤホンを再起動</button><button class="btn">工場出荷時に戻す</button></div>`);
+  const [bRestart, bReset] = restart.querySelectorAll("button");
+  bRestart.addEventListener("click", () => { if (confirm("イヤホンを再起動しますか？ 一度切断されます。")) send(P.RESTART); });
+  bReset.addEventListener("click", () => { if (confirm("イヤホンの設定をすべて初期化します。ペアリング情報も消える場合があります。元に戻せません。よろしいですか？")) send(P.RESET); });
+  card("pp2", "本体", [autoRow, toggle(P.LED[0], P.LED[1], "ライト", null), restart], true);
+
+  peats.selects = { noise: noiseSel, lang: langSel, autoOff: autoSel };
+  peats.sliders = { prompt, balance: bal, hearing: hear };
+  peats.applyVisibility();
+})();
+
+function sendPeatsEq(values) {
+  if (peats.updating || kind !== "peats") return;
+  // EQ と同時に使えない効果（ダイナミックバス・映画モード・ドルビー）は先にオフにする（公式アプリと同じ）
+  for (const pair of [P.DYN_BASS, P.MOVIE, P.DOLBY]) {
+    if (peats.state[pair[0]]) { send(pair[1], [0]); peats.requery(pair[0]); }
+  }
+  values.forEach((g, i) => send(P.EQ_V2, peatsEqBand(i + 1, PEATS_FREQS[i], g)));
+  try { localStorage.setItem("earbuds_popclip2_last_eq", JSON.stringify(values)); } catch (e) { /* 保存できない環境 */ }
+}
+
+// =====================================================================
+// ボタン
+// =====================================================================
+$("btnPeats").addEventListener("click", () => connect("peats"));
+$("btnP31i").addEventListener("click", () => connect("anker"));
+$("btnReload").addEventListener("click", () => (kind === "anker" ? anker : peats).queryAll());
+$("btnDisconnect").addEventListener("click", () => { userDisconnect = true; if (device && device.gatt.connected) device.gatt.disconnect(); });
+$("logToggle").addEventListener("click", () => {
+  const hidden = $("log").classList.toggle("hide");
+  $("logLbl").textContent = hidden ? "表示" : "隠す";
+  if (!hidden) $("log").textContent = logLines.join("\n");
+});
+$("btnCopy").addEventListener("click", async () => {
+  try { await navigator.clipboard.writeText(logLines.join("\n")); alert("コピーしました"); }
+  catch (e) { alert("コピーできませんでした"); }
+});
+$("btnCopy2").addEventListener("click", async () => {
+  try { await navigator.clipboard.writeText(connLines.join("\n") + "\n\n" + logLines.join("\n")); alert("コピーしました"); }
+  catch (e) { alert("コピーできませんでした"); }
+});
+
+if (!navigator.bluetooth) {
+  $("support").innerHTML = "<b style='color:var(--danger)'>このブラウザは Bluetooth に対応していません。</b><br>" +
+    "iPhone では App Store の無料アプリ「Bluefy – Web BLE Browser」でこのページを開いてください。<br>" +
+    "パソコンや Android では Chrome / Edge で開けます。";
+  $("btnPeats").disabled = $("btnP31i").disabled = true;
+}
+showNoiseOptions();
+</script>
+</body>
+</html>
